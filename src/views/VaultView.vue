@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import axios from 'axios'
 
 axios.defaults.baseURL = 'http://127.0.0.1:3000'
@@ -68,7 +68,7 @@ async function submitVaultItem() {
       algorithm: 'AES-256-GCM',
     })
 
-    alert('VaultItem guardado!')
+    getVault().then()
 
     serviceName.value = ''
     username.value = ''
@@ -96,23 +96,45 @@ async function decryptAESGCM(cipherTextB64: string, ivB64: string, key: CryptoKe
   return new TextDecoder().decode(plainBuffer)
 }
 
+type VaultItemType = {
+  id: number
+  serviceName: string
+  username: string
+  cipherText: string
+  notesCipher: string
+  algorithm: string
+  createdAt: string
+  updatedAt: string
+}
 async function getVault() {
   const masterPassword = 'contraseñaMaestraDelUsuario'
 
-  const respuesta = await axios.get(`/vault/${userId}`)
+  const respuesta = await axios.get<VaultItemType[]>(`/vault/${userId}`)
 
-  const data = respuesta.data[0]
   const salt = 'salt123'
-
   const key = await deriveMasterKey(masterPassword, salt)
 
-  const cipher = JSON.parse(data.cipherText)
+  const responsePromises = respuesta.data?.map(async (data) => {
+    const cipher = JSON.parse(data.cipherText)
+    const notesCipher = JSON.parse(data.notesCipher)
 
-  const plainText = await decryptAESGCM(cipher.cipherText, cipher.iv, key)
-  console.log('Contenido del vault:', plainText)
+    const plainText = await decryptAESGCM(cipher.cipherText, cipher.iv, key)
+    const notesText = await decryptAESGCM(notesCipher.cipherText, notesCipher.iv, key)
+
+    return {
+      ...data,
+      cipherText: plainText,
+      notesCipher: notesText,
+    }
+  })
+
+  vaultItems.value = (await Promise.all(responsePromises)) ?? []
 }
 
-getVault().then()
+const vaultItems = ref<VaultItemType[]>()
+onMounted(async () => {
+  await getVault()
+})
 </script>
 
 <template>
@@ -137,15 +159,48 @@ getVault().then()
       </div>
       <button type="submit">Guardar</button>
     </form>
+
+    <hr style="margin-top: 1rem; margin-bottom: 1rem" />
+
+    <div style="width: 100%">
+      <h2>Baúl de Contraseñas</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Servicio</th>
+            <th>Usuario</th>
+            <th>Contraseña Cifrada</th>
+            <th>Notas Cifradas</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="value in vaultItems" :key="value.id">
+            <td>{{ value.id }}</td>
+            <td>{{ value.serviceName }}</td>
+            <td>{{ value.username }}</td>
+            <td>{{ value.cipherText }}</td>
+            <td>{{ value.notesCipher }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.vault-form {
-  max-width: 400px;
-  margin: 0 auto;
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
 }
-.vault-form div {
-  margin-bottom: 10px;
+th,
+td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}
+th {
+  background-color: #f2f2f2;
 }
 </style>
