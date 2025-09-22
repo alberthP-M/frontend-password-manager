@@ -136,7 +136,9 @@ async function submitVaultItem() {
 }
 
 async function getVault() {
-  const respuesta = await axios.get<VaultItemType[]>(`/vault/${userId}`)
+  const respuesta = await axios.get<VaultItemType[]>(`/vault/${userId}`, {
+    params: { algorithm: 'RSA-OAEP' },
+  })
 
   const privateKey = await getPrivateKey()
   if (!privateKey) {
@@ -162,12 +164,25 @@ async function getVault() {
   vaultItems.value = (await Promise.all(responsePromises)) ?? []
 }
 
+async function remove(id: number) {
+  const confirm = window.confirm('Esta seguro')
+
+  if (!confirm) return
+
+  const response = await axios.delete(`/vault/${id}`)
+
+  if (response?.data) {
+    getVault().then()
+  }
+}
+
 onMounted(() => {
   getVault().then()
 })
 </script>
 
 <template>
+  <h1 style="text-align: center">Vista Cifrado Asimétrico</h1>
   <div class="flex">
     <strong>Llave Publica: </strong>
     <input
@@ -239,6 +254,9 @@ onMounted(() => {
             <td>{{ value.username }}</td>
             <td style="word-break: break-all">{{ value.cipherText }}</td>
             <td style="word-break: break-all">{{ value.notesCipher }}</td>
+            <td>
+              <button @click="remove(value.id)">Eliminar</button>
+            </td>
           </tr>
         </tbody>
       </table>

@@ -3,6 +3,10 @@ import { RouterView } from 'vue-router'
 </script>
 
 <template>
+  <div style="display: flex; gap: 1rem; width: 100%; justify-content: center">
+    <button @click="$router.push({ name: 'vault' })">Cifrado Simétrica</button>
+    <button @click="$router.push({ name: 'vault-asimetric' })">Cifrado Asimétrica</button>
+  </div>
   <RouterView />
 </template>
 

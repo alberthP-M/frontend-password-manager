@@ -65,7 +65,7 @@ async function submitVaultItem() {
       username: username.value,
       cipherText,
       notesCipher,
-      algorithm: 'AES-256-GCM',
+      algorithm: 'AES-GCM',
     })
 
     getVault().then()
@@ -109,7 +109,9 @@ type VaultItemType = {
 async function getVault() {
   const masterPassword = 'contraseñaMaestraDelUsuario'
 
-  const respuesta = await axios.get<VaultItemType[]>(`/vault/${userId}`)
+  const respuesta = await axios.get<VaultItemType[]>(`/vault/${userId}`, {
+    params: { algorithm: 'AES-GCM' },
+  })
 
   const salt = 'salt123'
   const key = await deriveMasterKey(masterPassword, salt)
@@ -131,6 +133,18 @@ async function getVault() {
   vaultItems.value = (await Promise.all(responsePromises)) ?? []
 }
 
+async function remove(id: number) {
+  const confirm = window.confirm('Esta seguro')
+
+  if (!confirm) return
+
+  const response = await axios.delete(`/vault/${id}`)
+
+  if (response?.data) {
+    getVault().then()
+  }
+}
+
 const vaultItems = ref<VaultItemType[]>()
 onMounted(async () => {
   await getVault()
@@ -138,6 +152,7 @@ onMounted(async () => {
 </script>
 
 <template>
+  <h1 style="text-align: center">Vista Cifrado Simétrico</h1>
   <div class="vault-form">
     <h2>Agregar nueva contraseña</h2>
     <form @submit.prevent="submitVaultItem">
@@ -181,6 +196,9 @@ onMounted(async () => {
             <td>{{ value.username }}</td>
             <td>{{ value.cipherText }}</td>
             <td>{{ value.notesCipher }}</td>
+            <td>
+              <button @click="remove(value.id)">Eliminar</button>
+            </td>
           </tr>
         </tbody>
       </table>

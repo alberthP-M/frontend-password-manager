@@ -7,13 +7,13 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
+      name: 'vault',
       component: VaultView,
     },
 
     {
       path: '/vault-asimetric',
-      name: 'vault',
+      name: 'vault-asimetric',
       component: VaultAsimetricView,
     },
   ],
